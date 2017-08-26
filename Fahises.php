@@ -1,6 +1,11 @@
 <?
 /* API Fahises PHP
- * Version: 0.1
+ * 0.1 Initial.
+ * 0.2 04/08/2017
+ * * Added ->Validate to check if an UID is it validate after logged.
+ * 0.3 18/08/2017
+ * * Added ->Likes for USERID or UID. Only available for users/products added for specific uses.
+ *
  * PHP 5.0.2, no anonymous functions and CURL.
  *
  * For now, only need token and id of Spot/Place.
@@ -11,10 +16,11 @@
  * Usage:
  * $F = new Fahises(<ID>,<TOKEN>);
  *
- * $F->Read(<nome,topic,options,history,online>);
- * $F->Write(<nome,topic,iframe,token>);
+ * $F->Read(<nome,topic,options,history,online,history>);
+ * $F->Write(<nome,topic,iframe,background,token>,<VALUE>);
  * $F->Tables(<add,rem,clear>,<allow,deny>,<uid>);
  *
+ * $F->Validate(<uid>,<token>);
 */
  
 class Fahises { 
@@ -24,6 +30,18 @@ class Fahises {
 	private $last;
 	private $silent = false;
 
+	private function find(){
+		$args = func_get_args();
+
+		if(!$args[0] || !is_array($args[0]) || !$args[1]) return false;
+
+		for($i=0;$i<sizeof($args[0]);$i++){
+			$element = $args[0][$i];
+			if(!$args[2] && $element->$args[1]) return $element;
+			else if ($args[2] == $element->$args[1]) return $args[3] ? $i : $element; 
+		}
+		return false;
+	}
 	private function error(){
 		$this->result = false;
 		$args = func_get_args();
@@ -31,19 +49,19 @@ class Fahises {
 
 		switch($args[0]){
 			case 001:
-				echo "Insufficient number of arguments.\n";
+				echo "Número insuficiente de argumentos\n";
 				break;
 			case 002:
-				echo "There is already an item, use ->Drop().\n";
+				echo "Já há um item, use ->DROP()\n";
 				break;
 			case 003:
-				echo "There was some error with the connection.\n";
+				echo "Houve algum erro com a conexão.\n";
 				break;
 			case 004:
-				echo "There is an error with Token/ID.\n";
+				echo "Erro com o Token/ID\n";
 				break;
 			case 005:
-				echo "There is no connection to the Spot/Place.\n";
+				echo "Não há conexão com o Spot/Place\n";
 				break;
 			default:
 				print_r($args);
@@ -82,6 +100,25 @@ class Fahises {
 
 		return true;
 
+	}
+	public function Validate($uid,$token){
+		if(!$this->result->online || !sizeof($this->result->online)) return false;
+
+		$opts = array('http' => array('method'  => 'GET', 'header'  => 'Content-type: application/x-www-form-urlencoded' ));
+
+		$context  = @stream_context_create($opts);
+		return $this->find($this->result->online,"uid",$uid) && json_decode(@file_get_contents("https://app.fahises.com.br/api/I$uid/$token", false, $context))->ok ? true : false;
+	}
+	public function Likes($userid){
+		if(!$userid) return false;
+		if(microtime(true) - $this->last < 1) sleep(1); 	
+		$data = array('token' => $this->token,'id' => $this->id,'userid' => $userid);
+
+		$opts = array('http' => array('method'  => 'POST', 'header'  => 'Content-type: application/x-www-form-urlencoded', 'content' => http_build_query($data) ));
+
+		$context = @stream_context_create($opts);
+		$this->last = microtime(true);
+		return json_decode(@file_get_contents("https://app.fahises.com.br/rest", false, $context));
 	}
 	public function Drop(){
 		$this->result = false;
