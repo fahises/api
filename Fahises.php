@@ -21,13 +21,13 @@
  * $F->Tables(<add,rem,clear>,<allow,deny>,<uid>);
  *
  * $F->Validate(<uid>,<token>);
+ * $F->Likes(<uid,userid>);
 */
  
 class Fahises { 
 	private $token;
 	private $id;
 	private $result;
-	private $last;
 	private $silent = false;
 
 	private function find(){
@@ -49,19 +49,19 @@ class Fahises {
 
 		switch($args[0]){
 			case 001:
-				echo "Número insuficiente de argumentos\n";
+				echo "Insufficient number of arguments\n";
 				break;
 			case 002:
-				echo "Já há um item, use ->DROP()\n";
+				echo "There is already an item, use ->Drop()\n";
 				break;
 			case 003:
-				echo "Houve algum erro com a conexão.\n";
+				echo "There was some error with the connection.\n";
 				break;
 			case 004:
-				echo "Erro com o Token/ID\n";
+				echo "There is an error with Token/ID.\n";
 				break;
 			case 005:
-				echo "Não há conexão com o Spot/Place\n";
+				echo "There is no connection to the Spot/Place.\n";
 				break;
 			default:
 				print_r($args);
@@ -93,7 +93,6 @@ class Fahises {
 
 		$context  = @stream_context_create($opts);
 		$this->result = json_decode(@file_get_contents('https://app.fahises.com.br/rest', false, $context));
-		$this->last = microtime(true);
 
 		if(!$this->result) return $this->error(003);
 		if($this->result->error) return $this->error($this->result->msg);
@@ -111,13 +110,11 @@ class Fahises {
 	}
 	public function Likes($userid){
 		if(!$userid) return false;
-		if(microtime(true) - $this->last < 1) sleep(1); 	
 		$data = array('token' => $this->token,'id' => $this->id,'userid' => $userid);
 
 		$opts = array('http' => array('method'  => 'POST', 'header'  => 'Content-type: application/x-www-form-urlencoded', 'content' => http_build_query($data) ));
 
 		$context = @stream_context_create($opts);
-		$this->last = microtime(true);
 		return json_decode(@file_get_contents("https://app.fahises.com.br/rest", false, $context));
 	}
 	public function Drop(){
@@ -136,10 +133,8 @@ class Fahises {
 		$length = strlen($data);
 		$opts = array('http' => array('method'  => 'PUT', 'header'  => "Content-Length: $length\r\nContent-Type: application/x-www-form-urlencoded", 'content' => $data ));
 
-		if(microtime(true) - $this->last < 1) sleep(1); 	
 		$context  = @stream_context_create($opts);
 		$result = @file_get_contents('https://app.fahises.com.br/rest', false, $context);
-		$this->last = microtime(true);
 
 		if(!$result) return $this->error(003);
 		if($result->error) return $this->error($this->result->msg);
